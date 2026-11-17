@@ -190,10 +190,11 @@ server.registerTool(
   {
     title: "Add image",
     description:
-      "Put a picture on a board: uploads a local image file or an http(s) image URL (PNG, JPEG, GIF or WebP, up to 10 MB) and adds an image node. Placement works like apply_changes: place.near / place.in a group / parent, or exact x/y; leave them all out and it goes below the board. Write a short caption in alt so the outline can describe it.",
+      "Put a picture on a board from a local file, an http(s) URL, or Base64 image data (PNG, JPEG, GIF or WebP, up to 10 MB). Supply exactly one of source or dataBase64. Placement works like apply_changes: place.near / place.in a group / parent, or exact x/y; leave them all out and it goes below the board. Write a short caption in alt so the outline can describe it.",
     inputSchema: {
       boardId: z.string(),
-      source: z.string().describe("Absolute path to a local image file, or an http(s) URL"),
+      source: z.string().optional().describe("Absolute path to a local image file, or an http(s) URL"),
+      dataBase64: z.string().optional().describe("Standard padded Base64 image bytes, without a data URL prefix"),
       alt: z.string().max(500).optional().describe("Caption: what's in the picture"),
       place: z.object({ near: z.string().optional(), in: z.string().optional(), dir: z.enum(["right", "left", "above", "below"]).optional() }).optional(),
       parent: z.string().optional().describe("Make it a mind-map child of this node"),
@@ -204,9 +205,16 @@ server.registerTool(
       height: z.number().positive().optional(),
     },
   },
-  tool(async ({ boardId, source, alt, ...where }) => {
+  tool(async ({ boardId, source, dataBase64, alt, ...where }) => {
     let bytes;
-    if (/^https?:\/\//i.test(source)) {
+    if ((source === undefined) === (dataBase64 === undefined)) throw new Error("Provide exactly one of source or dataBase64");
+    if (dataBase64 !== undefined) {
+      if (dataBase64.length > 4 * Math.ceil(MAX_IMAGE / 3)) throw new Error("Image is over 10 MB");
+      if (!dataBase64 || dataBase64.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(dataBase64)) throw new Error("Invalid Base64 image data");
+      bytes = Buffer.from(dataBase64, "base64");
+      if (!bytes.length || bytes.toString("base64") !== dataBase64) throw new Error("Invalid Base64 image data");
+      if (bytes.length > MAX_IMAGE) throw new Error("Image is over 10 MB");
+    } else if (/^https?:\/\//i.test(source)) {
       // Stop early on huge or slow downloads rather than pulling them all in and letting the server refuse.
       const res = await fetch(source, { signal: AbortSignal.timeout(30_000) });
       if (!res.ok) throw new Error(`Couldn't download ${source}: HTTP ${res.status}`);

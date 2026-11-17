@@ -38,7 +38,7 @@ required.
 | `describe_board` | read | The board as readable text: groups, ungrouped areas, mind-map nesting, connectors and variables, one line per node with its id. Start here. |
 | `view_board` | read | The board as a picture: groups, connectors, mind-map links, images and text, each node numbered, with a legend mapping numbers to ids. `focus` zooms to a group, or to a node and its branch. |
 | `view_image` | read | Open one image node and see the picture itself, plus its caption. |
-| `add_image` | write | Put a picture on a board from a local file or an http(s) URL (PNG, JPEG, GIF or WebP, up to 10 MB). Placement works like `apply_changes`. |
+| `add_image` | write | Put a picture on a board using exactly one of `source` (local file or http(s) URL) or `dataBase64` (standard padded Base64, without a data URL prefix). PNG, JPEG, GIF or WebP, up to 10 MiB decoded. Placement works like `apply_changes`. |
 | `apply_changes` | write | Add, update or delete nodes, connectors and groups in one all-or-nothing batch. Leave out x/y and the server finds free space. `mode: "propose"` sends additions to the owner as a suggestion to accept or discard instead. |
 | `get_board` | read | Full board as raw JSON: nodes, edges, groups, mind-map parent links. |
 | `create_board` | write | Create a board (you become OWNER). |
@@ -69,3 +69,4 @@ required.
   `spreadsheet` → `{ "rows": 4, "cols": 3, "cells": { "A1": "Hours", "B1": "=SUM(B2:B4)" } }`,
   `tracker` → `{ "title": "Budget", "lines": ["Total: sum(cost)"] }`. Every type also takes `tags` and `notes`.
 - The server speaks stdio only; run one process per client.
+- Base64 increases the message size by about one third; MCP clients may impose smaller message limits or record tool arguments. Restart an existing MCP server to load changes.
